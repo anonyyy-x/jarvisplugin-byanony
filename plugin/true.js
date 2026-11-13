@@ -1,30 +1,25 @@
-
 const axios = require("axios");
 const { System, isPrivate } = require("../lib/");
 
 System({
     pattern: "true",
     fromMe: isPrivate,
-    desc: "Truecaller number lookup",
+    desc: "Phone number lookup",
     type: "search"
 }, async (message, match) => {
     try {
-        const number = String(match || "")
-            .trim()
-            .replace(/[\s()-]/g, "");
+        const number = String(match || "").trim().replace(/[\s()-]/g, "");
 
         if (!/^\+?\d{8,15}$/.test(number)) {
             return await message.reply(
-                "*Usage:* `.true +919544445327`"
+                "*TRUE LOOKUP*\n\n" +
+                "Usage: *.true +911234567890*"
             );
         }
 
-        try {
-            await message.react("⏳");
-        } catch (_) {}
+        await message.react("⏳");
 
-        // Wait for the API response.
-        const response = await axios.get(
+        const { data } = await axios.get(
             "https://arooanonyapi.onrender.com/api/true",
             {
                 params: { phone: number },
@@ -32,19 +27,17 @@ System({
             }
         );
 
-        const data = response.data;
-
-        // Reply only after receiving a successful API response.
         if (!data || data.success !== true) {
-            throw new Error("API returned no successful result");
+            throw new Error("No successful API response");
         }
 
         const tc = data.truecaller || {};
         const tg = data.telegram || {};
 
         const result = [
-            "*╭━━〔 TRUECALLER LOOKUP 〕━━╮*",
+            "*╭━━〔 TRUE LOOKUP 〕━━╮*",
             "┃",
+            `┃ *Request ID:* ${data.request_id || "N/A"}`,
             `┃ *Number:* ${data.number || number}`,
             `┃ *Country:* ${data.country || "Unknown"}`,
             "┃",
@@ -54,24 +47,37 @@ System({
             `┃ *Last Seen:* ${tc.last_seen || "Unknown"}`,
             `┃ *Telegram Status:* ${tc.telegram_status || "Unknown"}`,
             "┃",
-            "*╰━━━━━━━━━━━━━━━━━━━━╯*"
+            "*┃ ✈ TELEGRAM*",
+            `┃ *Registered:* ${tg.registered ? "Yes" : "No"}`,
+            `┃ *Premium:* ${tg.premium ? "Yes" : "No"}`,
+            `┃ *Verified:* ${tg.verified ? "Yes" : "No"}`,
+            "┃",
+            "*╰━━━━━━━━━━━━━━━━━━╯*"
         ].join("\n");
 
-        await message.reply(result);
+        await message.client.sendMessage(message.jid, {
+            text: result,
+            contextInfo: {
+                externalAdReply: {
+                    title: "Truecaller Information",
+                    body: "Phone number lookup",
+                    mediaType: 1,
+                    sourceUrl: "https://whatsapp.com/channel/0029VaPeVWFHwXbM08nIIr2v"
+                }
+            }
+        });
 
-        try {
-            await message.react("✅");
-        } catch (_) {}
+        await message.react("✅");
 
     } catch (error) {
-        console.error("[TRUE API ERROR]", error.message);
+        console.error("[TRUE ERROR]", error.message);
 
         try {
             await message.react("❌");
         } catch (_) {}
 
         await message.reply(
-            "*API unavailable or no result received.*\nPlease try again later."
+            "*Lookup failed.*\nPlease try again later."
         );
     }
 });

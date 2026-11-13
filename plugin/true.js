@@ -5,7 +5,7 @@ const { System, isPrivate } = require("../lib/");
 System({
     pattern: "true",
     fromMe: isPrivate,
-    desc: "Phone number information lookup",
+    desc: "Truecaller number lookup",
     type: "search"
 }, async (message, match) => {
     try {
@@ -13,58 +13,65 @@ System({
             .trim()
             .replace(/[\s()-]/g, "");
 
-        if (!number) {
+        if (!/^\+?\d{8,15}$/.test(number)) {
             return await message.reply(
-                "*TRUE LOOKUP*\n\n" +
-                "Usage: *.true +919544445327*"
+                "*Usage:* `.true +919544445327`"
             );
         }
 
-        if (!/^\+?\d{8,15}$/.test(number)) {
-            return await message.reply("*Invalid phone number.*");
-        }
+        try {
+            await message.react("⏳");
+        } catch (_) {}
 
-        await message.react("⏳");
-
+        // Wait for the API response.
         const response = await axios.get(
             "https://arooanonyapi.onrender.com/api/true",
             {
                 params: { phone: number },
-                timeout: 30000
+                timeout: 60000
             }
         );
 
         const data = response.data;
 
-        if (!data || !data.success) {
-            await message.react("❌");
-            return await message.reply("*No information found.*");
+        // Reply only after receiving a successful API response.
+        if (!data || data.success !== true) {
+            throw new Error("API returned no successful result");
         }
 
-        const info = data.truecaller || {};
+        const tc = data.truecaller || {};
+        const tg = data.telegram || {};
 
         const result = [
-            "*╭━━〔 PHONE LOOKUP 〕━━╮*",
+            "*╭━━〔 TRUECALLER LOOKUP 〕━━╮*",
             "┃",
             `┃ *Number:* ${data.number || number}`,
             `┃ *Country:* ${data.country || "Unknown"}`,
-            `┃ *Carrier:* ${info.carrier || "Unknown"}`,
             "┃",
-            "*╰━━━━━━━━━━━━━━━━━━╯*"
+            "*┃ 🔍 TRUECALLER*",
+            `┃ *Name:* ${tc.name || "Not available"}`,
+            `┃ *Carrier:* ${tc.carrier || "Unknown"}`,
+            `┃ *Last Seen:* ${tc.last_seen || "Unknown"}`,
+            `┃ *Telegram Status:* ${tc.telegram_status || "Unknown"}`,
+            "┃",
+            "*╰━━━━━━━━━━━━━━━━━━━━╯*"
         ].join("\n");
 
         await message.reply(result);
-        await message.react("✅");
+
+        try {
+            await message.react("✅");
+        } catch (_) {}
 
     } catch (error) {
-        console.error("[TRUE LOOKUP]", error.message);
+        console.error("[TRUE API ERROR]", error.message);
 
         try {
             await message.react("❌");
         } catch (_) {}
 
         await message.reply(
-            "*Lookup failed.*\nPlease try again later."
+            "*API unavailable or no result received.*\nPlease try again later."
         );
     }
 });
